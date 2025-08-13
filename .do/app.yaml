@@ -1,0 +1,28 @@
+name: financial-analysis-api
+services:
+  - name: api
+    source_dir: /
+    github:
+      repo: zayarnyowin/ai-analyse.git
+      branch: main
+    run_command: uvicorn api:app --host 0.0.0.0 --port $PORT
+    environment_slug: python
+    instance_count: 1
+    instance_size_slug: basic-xxs
+    envs:
+      - key: GOOGLE_API_KEY
+        scope: RUN_AND_BUILD_TIME
+        value: ${GOOGLE_API_KEY}
+      - key: PORT
+        scope: RUN_TIME
+        value: "8000"
+      - key: PYTHON_VERSION
+        scope: BUILD_TIME
+        value: "3.11"
+    health_check:
+      http_path: /health
+      initial_delay_seconds: 30
+      interval_seconds: 10
+      timeout_seconds: 5
+      unhealthy_threshold: 3
+      healthy_threshold: 2

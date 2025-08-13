@@ -1,0 +1,205 @@
+{
+	"info": {
+		"_postman_id": "financial-analysis-api-collection",
+		"name": "Financial Analysis API",
+		"description": "Complete collection for testing the Financial Statement Analysis API",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Health Check",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/health",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"health"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "API Info",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						""
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Upload and Analyze PDF",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "file",
+							"type": "file",
+							"src": []
+						},
+						{
+							"key": "analysis_type",
+							"value": "full",
+							"description": "Type of analysis: metrics, ratios, or full"
+						}
+					]
+				},
+				"url": {
+					"raw": "{{base_url}}/analyze/upload",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"analyze",
+						"upload"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Analyze Existing File",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"file_path\": \"demo6_fs.pdf\",\n    \"analysis_type\": \"full\"\n}"
+				},
+				"url": {
+					"raw": "{{base_url}}/analyze/file",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"analyze",
+						"file"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Check Analysis Status",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/status/{{request_id}}",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"status",
+						"{{request_id}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get Analysis Results",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/results/{{request_id}}",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"results",
+						"{{request_id}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Queue Status",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/queue",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"queue"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Cleanup Analysis",
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/cleanup/{{request_id}}",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"cleanup",
+						"{{request_id}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Cleanup All",
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/cleanup/all",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"cleanup",
+						"all"
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8000",
+			"type": "string"
+		},
+		{
+			"key": "request_id",
+			"value": "your_request_id_here",
+			"type": "string"
+		}
+	]
+}
