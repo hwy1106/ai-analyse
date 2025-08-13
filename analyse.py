@@ -10,7 +10,7 @@ from pypdf import PdfReader
 load_dotenv()
 
 # Check if API key is available
-if not os.getenv("GOO_API_KEY"):
+if not os.getenv("GOOGLE_API_KEY"):
     print("⚠️  Warning: GOOGLE_API_KEY not found in environment variables")
     print("Please set your Google API key in a .env file or environment variable")
 
@@ -120,7 +120,7 @@ def calculate_ratios(state: StatementState) -> StatementState:
 
 # --- Step 3: Analyze with Gemini ---
 def analyze_statement(state: StatementState) -> StatementState:
-    api_key = os.getenv("GOO_API_KEY")
+    api_key = os.getenv("GOOGLE_API_KEY")
     if not api_key:
         print("❌ Cannot analyze: GOOGLE_API_KEY not found")
         state["analysis"] = "Analysis failed: API key not available"

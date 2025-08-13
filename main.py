@@ -37,7 +37,7 @@ def buy_stocks(symbol: str, quantity: int, total_price: float) -> str:
 
 
 tools = [get_stock_price, buy_stocks]
-key = os.getenv("GOO_API_KEY")
+key = os.getenv("GOOGLE_API_KEY")
 
 llm = init_chat_model("google_genai:gemini-2.0-flash",api_key=key)
 llm_with_tools = llm.bind_tools(tools)
