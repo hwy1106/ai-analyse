@@ -1,5 +1,5 @@
 from fastapi import FastAPI, HTTPException, UploadFile, File, BackgroundTasks
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from typing import Optional, Dict, Any
@@ -14,6 +14,18 @@ from pathlib import Path
 # Import your existing analysis functions
 from analyse import read_statement, calculate_ratios, analyze_statement, StatementState
 
+# New imports for PDF/chart generation
+from reportlab.lib.pagesizes import A4
+from reportlab.pdfgen import canvas
+from reportlab.lib.units import cm
+from reportlab.lib import colors
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
+from reportlab.lib.styles import getSampleStyleSheet
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+import numpy as np
+
 # Initialize FastAPI app
 app = FastAPI(
     title="Financial Statement Analysis API",
@@ -22,6 +34,11 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc"
 )
+
+# Ensure runtime dirs exist
+Path("uploads").mkdir(exist_ok=True)
+Path("reports").mkdir(exist_ok=True)
+Path("charts").mkdir(exist_ok=True)
 
 # Add CORS middleware
 app.add_middleware(
@@ -150,6 +167,118 @@ async def process_analysis(request_id: str, file_path: str, analysis_type: str):
         analysis_results[request_id] = error_result
         analysis_queue[request_id]["status"] = "failed"
         analysis_queue[request_id]["error"] = str(e)
+
+
+def _generate_bar_chart_png(metrics: Dict[str, float], output_path: Path):
+    revenue = metrics.get("Total Revenue", 0.0)
+    cost = metrics.get("Total Cost of Sales", 0.0)
+    net_profit = metrics.get("Net Profit", 0.0)
+
+    labels = ["Revenue", "Cost", "Net Profit"]
+    values = [revenue, cost, net_profit]
+    colors_list = ["#4CAF50", "#F44336", "#2196F3"]
+
+    plt.figure(figsize=(6, 4))
+    bars = plt.bar(labels, values, color=colors_list)
+    plt.title("Revenue vs Cost vs Net Profit")
+    plt.ylabel("Amount")
+    plt.grid(axis="y", linestyle="--", alpha=0.4)
+
+    # Add value labels on bars
+    for bar in bars:
+        height = bar.get_height()
+        plt.annotate(f"{height:,.0f}",
+                     xy=(bar.get_x() + bar.get_width() / 2, height),
+                     xytext=(0, 3),
+                     textcoords="offset points",
+                     ha="center", va="bottom", fontsize=8)
+
+    plt.tight_layout()
+    plt.savefig(output_path, dpi=150)
+    plt.close()
+
+
+def _build_pdf_report(result: AnalysisResult, report_path: Path, chart_path: Optional[Path]):
+    doc = SimpleDocTemplate(str(report_path), pagesize=A4, rightMargin=36, leftMargin=36, topMargin=36, bottomMargin=36)
+    styles = getSampleStyleSheet()
+    elements = []
+
+    # Title
+    elements.append(Paragraph("Financial Analysis Report", styles['Title']))
+    elements.append(Spacer(1, 12))
+    meta = f"Request ID: {result.request_id} | Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+    elements.append(Paragraph(meta, styles['Normal']))
+    elements.append(Spacer(1, 12))
+
+    # Metrics table
+    elements.append(Paragraph("Extracted Metrics", styles['Heading2']))
+    metrics_data = [["Metric", "Value"]] + [[k, f"{v:,.2f}"] for k, v in result.metrics.items()]
+    metrics_table = Table(metrics_data, hAlign='LEFT')
+    metrics_table.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,0), colors.lightgrey),
+        ('GRID', (0,0), (-1,-1), 0.25, colors.grey),
+        ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+        ('ALIGN', (1,1), (-1,-1), 'RIGHT'),
+    ]))
+    elements.append(metrics_table)
+    elements.append(Spacer(1, 12))
+
+    # Ratios table
+    elements.append(Paragraph("Calculated Ratios", styles['Heading2']))
+    ratios_data = [["Ratio", "Value"]] + [[k, v] for k, v in result.ratios.items()]
+    ratios_table = Table(ratios_data, hAlign='LEFT')
+    ratios_table.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,0), colors.lightgrey),
+        ('GRID', (0,0), (-1,-1), 0.25, colors.grey),
+        ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+        ('ALIGN', (1,1), (-1,-1), 'RIGHT'),
+    ]))
+    elements.append(ratios_table)
+    elements.append(Spacer(1, 12))
+
+    # Bar chart
+    if chart_path and chart_path.exists():
+        elements.append(Paragraph("Key Figures", styles['Heading2']))
+        elements.append(Image(str(chart_path), width=14*cm, height=9*cm))
+        elements.append(Spacer(1, 12))
+
+    # AI analysis
+    elements.append(Paragraph("AI Analysis", styles['Heading2']))
+    analysis_text = result.analysis or "No analysis available."
+    # Split into paragraphs for readability
+    for para in analysis_text.split("\n\n"):
+        elements.append(Paragraph(para.replace("\n", "<br/>"), styles['BodyText']))
+        elements.append(Spacer(1, 6))
+
+    doc.build(elements)
+
+
+@app.get("/report/{request_id}.pdf")
+async def download_report(request_id: str):
+    # Validate request
+    if request_id not in analysis_results:
+        raise HTTPException(status_code=404, detail="Analysis results not found")
+
+    result = analysis_results[request_id]
+    if result.status != "completed":
+        raise HTTPException(status_code=400, detail="Analysis is not completed yet")
+
+    # Create chart
+    chart_filename = f"chart_{request_id}.png"
+    chart_path = Path("charts") / chart_filename
+    _generate_bar_chart_png(result.metrics, chart_path)
+
+    # Build PDF
+    report_filename = f"financial_report_{request_id}.pdf"
+    report_path = Path("reports") / report_filename
+    _build_pdf_report(result, report_path, chart_path)
+
+    # Stream file
+    return FileResponse(
+        path=str(report_path),
+        media_type="application/pdf",
+        filename=report_filename
+    )
 
 # API Endpoints
 @app.get("/", response_model=Dict[str, Any])
