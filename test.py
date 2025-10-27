@@ -1,7 +1,7 @@
 from dotenv import load_dotenv
 import os
 
-load_dotenv()  # loads GOOGLE_API_KEY into environment test
+load_dotenv()  # loads GOOGLE_API_KEY into environment
 #print("CWD =", os.getcwd())
 key = os.getenv("GOO_API_KEY")
 from langchain_google_genai import ChatGoogleGenerativeAI
