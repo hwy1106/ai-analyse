@@ -40,46 +40,6 @@ def read_statement(state: StatementState) -> StatementState:
         filtered_rows = df[df['Item Name'].str.contains(r'sales', case=False, na=False)]
         # print('Debugging', filtered_rows)
 
-            
-        # state["text"] = text
-        # text = df.iloc[0].to_string()
-        
-
-        # Extract key totals from your PDF
-        # metrics = {}
-        # patterns = {
-        #     "Total Revenue": r"Total Revenue\s+([\d,]+\.\d+)",
-        #     "Total Cost of Sales": r"Total Cost of sales\s+\(([\d,]+\.\d+)\)",
-        #     "Profit Before Tax": r"Profit Before Tax\s+([\d,]+\.\d+)",
-        #     "Total Expenses": r"Total Expenses\s+\(([\d,]+\.\d+)\)",
-        #     "Net Profit": r"Net Profit/\(Loss\)\s+([\d,]+\.\d+)",
-        #     "Income Tax Expenses": r"Income Tax Expenses\s+([\d,]+\.\d+)",
-        #     "Profit For the Year": r"Profit For the Year\s+([\d,]+\.\d+)"
-        # }
-
-        # patterns = {
-            # "Sales": r"Sales\s+([\d,]+\.\d+)",
-            # "Total Cost of Sales": r"Total Cost of sales\s+\(([\d,]+\.\d+)\)",
-            # "Profit Before Tax": r"Profit Before Tax\s+([\d,]+\.\d+)",
-            # "Total Expenses": r"Total Expenses\s+\(([\d,]+\.\d+)\)",
-            # "Net Profit": r"Net Profit/\(Loss\)\s+([\d,]+\.\d+)",
-            # "Income Tax Expenses": r"Income Tax Expenses\s+([\d,]+\.\d+)",
-            # "Profit For the Year": r"Profit For the Year\s+([\d,]+\.\d+)"
-        # }
-
-        # for key, pattern in patterns.items():
-        #     match = re.search(pattern, text, re.IGNORECASE)
-
-        #     if match:
-        #         try:
-        #             value = float(match.group(1).replace(",", ""))
-        #             metrics[key] = value
-        #             print(f"✅ Found {key}: {value}")
-        #         except ValueError:
-        #             print(f"⚠️  Could not parse value for {key}: {match.group(1)}")
-        #     else:
-        #         print(f"⚠️  Could not find {key}")
-
         state["metrics"] = filtered_rows.to_dict()
         # print('test state after converting from df', state["metrics"])
         return state
@@ -246,7 +206,6 @@ if __name__ == "__main__":
         else:
             print("\n⚠️  No financial ratios were calculated")
         
-        print('a')
         if state["analysis"] and not state["analysis"].startswith("Analysis failed"):
             print("\n🤖 AI-Generated Analysis:")
             print("-" * 30)
