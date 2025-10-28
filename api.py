@@ -10,9 +10,18 @@ import asyncio
 from datetime import datetime
 import json
 from pathlib import Path
+import pandas as pd  # For reading Excel files
 
-# Import your existing analysis functions
-from analyse import read_statement, calculate_ratios, analyze_statement, StatementState
+from analyse import read_statement as read_pdf_statement
+from analyse import calculate_ratios as calculate_pdf_ratios
+from analyse import analyze_statement as analyze_pdf_statement
+from analyse import StatementState as PDFStatementState
+
+# Excel analysis
+from analyse_ba import read_statement as read_excel_statement
+from analyse_ba import calculate_ratios as calculate_excel_ratios
+from analyse_ba import analyze_statement as analyze_excel_statement
+from analyse_ba import StatementState as ExcelStatementState
 
 # New imports for PDF/chart generation
 from reportlab.lib.pagesizes import A4
@@ -25,6 +34,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
+
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -76,6 +86,11 @@ class AnalysisResult(BaseModel):
 analysis_results: Dict[str, AnalysisResult] = {}
 analysis_queue: Dict[str, Dict[str, Any]] = {}
 
+# Storage for Excel analysis results
+excel_analysis_results: Dict[str, Any] = {}
+excel_analysis_queue: Dict[str, Any] = {}
+
+
 # Utility functions
 def save_uploaded_file(upload_file: UploadFile) -> str:
     """Save uploaded file and return the file path"""
@@ -94,6 +109,19 @@ def save_uploaded_file(upload_file: UploadFile) -> str:
     
     return str(file_path)
 
+def save_uploaded_excel(upload_file: UploadFile) -> str:
+    upload_dir = Path("uploads")
+    upload_dir.mkdir(exist_ok=True)
+    file_extension = Path(upload_file.filename).suffix
+    unique_filename = f"{uuid.uuid4()}{file_extension}"
+    file_path = upload_dir / unique_filename
+
+    with open(file_path, "wb") as buffer:
+        content = upload_file.file.read()
+        buffer.write(content)
+    
+    return str(file_path)
+    
 def cleanup_file(file_path: str):
     """Remove temporary file"""
     try:
@@ -112,7 +140,7 @@ async def process_analysis(request_id: str, file_path: str, analysis_type: str):
         analysis_queue[request_id]["status"] = "processing"
         
         # Create initial state
-        state = StatementState(
+        state = PDFStatementState(
             file_path=file_path,
             text="",
             metrics={},
@@ -122,13 +150,13 @@ async def process_analysis(request_id: str, file_path: str, analysis_type: str):
         
         # Execute analysis pipeline
         if analysis_type in ["metrics", "full"]:
-            state = read_statement(state)
+            state = read_pdf_statement(state)
         
         if analysis_type in ["ratios", "full"] and state["metrics"]:
-            state = calculate_ratios(state)
+            state = calculate_pdf_ratios(state)
         
         if analysis_type == "full" and state["metrics"] and state["ratios"]:
-            state = analyze_statement(state)
+            state = analyze_pdf_statement(state)
         
         # Calculate processing time
         processing_time = (datetime.now() - start_time).total_seconds()
@@ -168,6 +196,62 @@ async def process_analysis(request_id: str, file_path: str, analysis_type: str):
         analysis_queue[request_id]["status"] = "failed"
         analysis_queue[request_id]["error"] = str(e)
 
+async def process_excel_analysis(request_id: str, file_path: str, analysis_type: str):
+    start_time = datetime.now()
+    try:
+        excel_analysis_queue[request_id]["status"] = "processing"
+
+        # Initialize state (similar to PDF StatementState)
+        state: ExcelStatementState = {
+            "file_path": file_path,
+            "text": "",
+            "metrics": {},
+            "ratios": {},
+            "analysis": ""
+        }
+
+        # Step 1: Extract metrics
+        if analysis_type in ["metrics", "full"]:
+            state = read_excel_statement(state)
+
+        # Step 2: Calculate ratios (reuse existing calculate_ratios if compatible)
+        if analysis_type in ["ratios", "full"] and state["metrics"]:
+            state = calculate_excel_ratios(state)
+
+        # Step 3: AI analysis
+        if analysis_type == "full" and state["metrics"] and state["ratios"]:
+            state = analyze_excel_statement(state)
+
+        # Processing time
+        processing_time = (datetime.now() - start_time).total_seconds()
+
+        # Store result
+        excel_analysis_results[request_id] = {
+            "request_id": request_id,
+            "status": "completed",
+            "metrics": state["metrics"],
+            "ratios": state["ratios"],
+            "analysis": state["analysis"],
+            "text_length": len(state["text"]),
+            "timestamp": datetime.now().isoformat(),
+            "processing_time": processing_time
+        }
+        excel_analysis_queue[request_id]["status"] = "completed"
+
+    except Exception as e:
+        processing_time = (datetime.now() - start_time).total_seconds()
+        excel_analysis_results[request_id] = {
+            "request_id": request_id,
+            "status": "failed",
+            "metrics": {},
+            "ratios": {},
+            "analysis": f"Analysis failed: {str(e)}",
+            "text_length": 0,
+            "timestamp": datetime.now().isoformat(),
+            "processing_time": processing_time
+        }
+        excel_analysis_queue[request_id]["status"] = "failed"
+        excel_analysis_queue[request_id]["error"] = str(e)
 
 def _generate_bar_chart_png(metrics: Dict[str, float], output_path: Path):
     revenue = metrics.get("Total Revenue", 0.0)
@@ -348,6 +432,41 @@ async def analyze_upload(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to process upload: {str(e)}")
 
+@app.post("/analyze/excel/upload", response_model=AnalysisResponse)
+async def analyze_excel_upload(
+    background_tasks: BackgroundTasks,
+    file: UploadFile = File(..., description="Excel file to analyze"),
+    analysis_type: str = "full"
+):
+    if not file.filename.lower().endswith(('.xlsx', '.xls')):
+        raise HTTPException(status_code=400, detail="Only Excel files are supported")
+    
+    if analysis_type not in ["metrics", "ratios", "full"]:
+        raise HTTPException(status_code=400, detail="Invalid analysis_type")
+    
+    try:
+        request_id = str(uuid.uuid4())
+        file_path = save_uploaded_excel(file)
+
+        excel_analysis_queue[request_id] = {
+            "status": "queued",
+            "file_path": file_path,
+            "analysis_type": analysis_type,
+            "timestamp": datetime.now().isoformat()
+        }
+
+        background_tasks.add_task(process_excel_analysis, request_id, file_path, analysis_type)
+
+        return AnalysisResponse(
+            request_id=request_id,
+            status="queued",
+            message="Excel analysis started successfully",
+            timestamp=datetime.now().isoformat()
+        )
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to process Excel upload: {str(e)}")
+
 @app.post("/analyze/file", response_model=AnalysisResponse)
 async def analyze_existing_file(
     background_tasks: BackgroundTasks,
@@ -429,6 +548,28 @@ async def get_analysis_results(request_id: str):
     
     return result
 
+@app.get("/status/excel/{request_id}")
+async def get_excel_status(request_id: str):
+    if request_id not in excel_analysis_queue:
+        raise HTTPException(status_code=404, detail="Request ID not found")
+    
+    queue_info = excel_analysis_queue[request_id]
+    if queue_info["status"] == "completed" and request_id in excel_analysis_results:
+        result = excel_analysis_results[request_id]
+        return {"request_id": request_id, "status": "completed", "result": result, "queue_info": queue_info}
+    
+    return {"request_id": request_id, "status": queue_info["status"], "queue_info": queue_info}
+
+@app.get("/results/excel/{request_id}")
+async def get_excel_results(request_id: str):
+    if request_id not in excel_analysis_results:
+        raise HTTPException(status_code=404, detail="Analysis results not found")
+    
+    result = excel_analysis_results[request_id]
+    if result["status"] == "failed":
+        raise HTTPException(status_code=500, detail=f"Analysis failed: {result['analysis']}")
+    return result
+
 @app.get("/queue", response_model=Dict[str, Any])
 async def get_queue_status():
     """Get the current analysis queue status"""
@@ -471,6 +612,54 @@ async def cleanup_all():
     analysis_queue.clear()
     
     return {"message": "Cleaned up all analyses"}
+
+@app.post("/analyze/upload", response_model=AnalysisResponse)
+async def analyze_upload(
+    background_tasks: BackgroundTasks,
+    file: UploadFile = File(..., description="PDF file to analyze"),
+    analysis_type: str = "full"
+):
+    """Upload and analyze a PDF file"""
+    
+    # Validate file type
+    if not file.filename.lower().endswith('.pdf'):
+        raise HTTPException(status_code=400, detail="Only PDF files are supported")
+    
+    # Validate analysis type
+    if analysis_type not in ["metrics", "ratios", "full"]:
+        raise HTTPException(status_code=400, detail="Invalid analysis_type. Use 'metrics', 'ratios', or 'full'")
+    
+    # Check API key
+    if not os.getenv("GOOGLE_API_KEY") and analysis_type == "full":
+        raise HTTPException(status_code=500, detail="Google API key not configured")
+    
+    try:
+        # Generate request ID
+        request_id = str(uuid.uuid4())
+        
+        # Save uploaded file
+        file_path = save_uploaded_file(file)
+        
+        # Initialize queue entry
+        analysis_queue[request_id] = {
+            "status": "queued",
+            "file_path": file_path,
+            "analysis_type": analysis_type,
+            "timestamp": datetime.now().isoformat()
+        }
+        
+        # Start background processing
+        background_tasks.add_task(process_analysis, request_id, file_path, analysis_type)
+        
+        return AnalysisResponse(
+            request_id=request_id,
+            status="queued",
+            message="Analysis started successfully",
+            timestamp=datetime.now().isoformat()
+        )
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to process upload: {str(e)}")
 
 # Error handlers
 @app.exception_handler(Exception)
