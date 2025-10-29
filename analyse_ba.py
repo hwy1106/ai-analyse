@@ -29,6 +29,9 @@ def read_statement(state: StatementState) -> StatementState:
     # Currently accepting xlsx only, check for pdf compatability
     try:
         df = pd.read_excel(state["file_path"])
+
+        # Drop unneeded columns if it exists
+        df = df.drop(['Item Code'], axis=1, errors='ignore')
         # print('Debugging df headers', list(df.columns.values))
 
         #Insert warning if no extraction
@@ -38,10 +41,12 @@ def read_statement(state: StatementState) -> StatementState:
 
         # Select rows that contain Sales
         filtered_rows = df[df['Item Name'].str.contains(r'sales', case=False, na=False)]
-        # print('Debugging', filtered_rows)
+        
+        # Sanitize filtered data
+        # filtered_rows = filtered_rows.where(pd.notnull(filtered_rows), None)
 
         state["metrics"] = filtered_rows.to_dict()
-        # print('test state after converting from df', state["metrics"])
+        print('test state after converting from df', state["metrics"])
         return state
         
     except Exception as e:
@@ -178,7 +183,7 @@ if __name__ == "__main__":
     
     if not os.path.exists(xlsx_file):
         print(f"❌ PDF file not found: {xlsx_file}")
-        print("Please ensure the PDF file exists in the current directory")
+        print("Please ensure the Excel file exists in the current directory")
         exit(1)
     
     print(f"📄 Analyzing xlsx: {xlsx_file}")
@@ -215,4 +220,4 @@ if __name__ == "__main__":
             
     except Exception as e:
         print(f"❌ Error during analysis: {e}")
-        print("Please check your PDF file and ensure it's a valid financial statement")
+        print("Please check your Excel file and ensure it's a valid financial statement")
