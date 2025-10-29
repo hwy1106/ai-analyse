@@ -41,7 +41,7 @@ def read_statement(state: StatementState) -> StatementState:
         filtered_rows = df[df['Item Name'].str.contains(r'sales', case=False, na=False)]
         
         state["metrics"] = filtered_rows.to_dict()
-        print('test state after converting from df', state["metrics"])
+        # print('test state after converting from df', state["metrics"])
         return state
         
     except Exception as e:
