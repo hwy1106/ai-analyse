@@ -554,11 +554,24 @@ async def get_excel_status(request_id: str):
         raise HTTPException(status_code=404, detail="Request ID not found")
     
     queue_info = excel_analysis_queue[request_id]
+    # print('debugging queue_info:', queue_info)
+
     if queue_info["status"] == "completed" and request_id in excel_analysis_results:
         result = excel_analysis_results[request_id]
-        return {"request_id": request_id, "status": "completed", "result": result, "queue_info": queue_info}
+        # print('Debugging app.get successful\n', f'Request_id {request_id}\nResult {result}\nQueue info: {queue_info}')
+        return {
+            "request_id": request_id, 
+            "status": "completed", 
+            "result": result, 
+            # "result": 'I am a banana', #AAAAAAAAA
+            "queue_info": queue_info
+        }
     
-    return {"request_id": request_id, "status": queue_info["status"], "queue_info": queue_info}
+    return {
+        "request_id": request_id, 
+        "status": queue_info["status"], 
+        "queue_info": queue_info
+    }
 
 @app.get("/results/excel/{request_id}")
 async def get_excel_results(request_id: str):
@@ -566,6 +579,7 @@ async def get_excel_results(request_id: str):
         raise HTTPException(status_code=404, detail="Analysis results not found")
     
     result = excel_analysis_results[request_id]
+    
     if result["status"] == "failed":
         raise HTTPException(status_code=500, detail=f"Analysis failed: {result['analysis']}")
     return result
