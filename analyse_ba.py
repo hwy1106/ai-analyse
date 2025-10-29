@@ -8,6 +8,7 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from pypdf import PdfReader
 from collections import Counter
 import pandas as pd
+import numpy as np
 
 load_dotenv()
 
@@ -29,10 +30,7 @@ def read_statement(state: StatementState) -> StatementState:
     # Currently accepting xlsx only, check for pdf compatability
     try:
         df = pd.read_excel(state["file_path"])
-
-        # Drop unneeded columns if it exists
-        df = df.drop(['Item Code'], axis=1, errors='ignore')
-        # print('Debugging df headers', list(df.columns.values))
+        df = df.replace({np.nan: None}) #Sanitize df
 
         #Insert warning if no extraction
         # print(f"⚠️  Warning: Could not extract text from page: {e}")
@@ -42,9 +40,6 @@ def read_statement(state: StatementState) -> StatementState:
         # Select rows that contain Sales
         filtered_rows = df[df['Item Name'].str.contains(r'sales', case=False, na=False)]
         
-        # Sanitize filtered data
-        # filtered_rows = filtered_rows.where(pd.notnull(filtered_rows), None)
-
         state["metrics"] = filtered_rows.to_dict()
         print('test state after converting from df', state["metrics"])
         return state
