@@ -194,7 +194,7 @@ def main():
     test_queue_status()
     
     # Look for excel files in current directory
-    excel_files = list(Path(".").glob("*.xlsx"))
+    excel_files = [f for f in Path(".").iterdir() if f.suffix in [".xls", ".xlsx"]]
     
     if not excel_files:
         print("\n⚠️  No excel files found in current directory")

@@ -174,7 +174,8 @@ if __name__ == "__main__":
     # You can change this file path to analyze different PDFs
     # pdf_file = "demo6_fs.pdf"
     # pdf_file = "SME_Business_Advisory_Template.pdf"
-    xlsx_file = "data.xlsx"
+    # xlsx_file = "data.xlsx"
+    xlsx_file = "data.xls"
     
     if not os.path.exists(xlsx_file):
         print(f"❌ PDF file not found: {xlsx_file}")
