@@ -132,6 +132,7 @@ def analyze_statement(state: StatementState) -> StatementState:
         2. To ensure the section headers can be styled as bold on the front end, you must format them with a unique prefix: **"//"** (slash, slash) followed by **Title Case** tex and add surfix **"\\"** (backslash, backslash).
         3. **DO NOT** use asterisks (**), colons (:), markdown headings (## or ###), or all-caps for headers.
         4. The final section, which is a concise wrap-up, must be titled **// Summary**.
+        5. **DO NOT** remove prefix 0 (zero) like Customer Id, Item Code. 
         
         Example Header Format:
         //Executive Summary\\
