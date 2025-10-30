@@ -125,12 +125,20 @@ def analyze_statement(state: StatementState) -> StatementState:
         
         prompt = f"""
         You are a Senior Business Advisory analyst. 
-        Using the following business advisory data, generate an analysis report and some summary text. Make sure you provide:
-        - Executive summary (Total sales, growth, standout performers)
-        - Sales performance analysis (Salesperson that generated most revenue and who are the customers)
-        - Cost efficiency analysis (Channel that performed best)
-        - Product/Service insight
-        - Actionable recommendations
+        Using the following business advisory data, generate an analysis report and a summary section. 
+        
+        **IMPORTANT FORMATTING INSTRUCTIONS:**
+        1. **DO NOT** include any title like "Business Advisory Analysis Report" or similar.
+        2. Format all section headings (like Executive Summary, Sales Performance Analysis, etc.) as **plain text** on their own line. **DO NOT** use bolding (**), markdown headings (##), or colons (:).
+        3. The final section, which is a concise wrap-up, must be titled **Summary**. (Still use plain text for the word Summary).
+        
+        Make sure you provide the following sections:
+        - Executive Summary (Total sales, growth, standout performers)
+        - Sales Performance Analysis (Salesperson that generated most revenue and who are the customers)
+        - Cost Efficiency Analysis (Channel that performed best)
+        - Product/Service Insight
+        - Actionable Recommendations
+        - A final, separate paragraph titled Summary
 
         Extracted Metrics:
         {state['metrics']}
