@@ -127,10 +127,16 @@ def analyze_statement(state: StatementState) -> StatementState:
         You are a Senior Business Advisory analyst. 
         Using the following business advisory data, generate an analysis report and a summary section. 
         
-        **IMPORTANT FORMATTING INSTRUCTIONS:**
-        1. **DO NOT** include any title like "Business Advisory Analysis Report" or similar.
-        2. Format all section headings (like Executive Summary, Sales Performance Analysis, etc.) as **plain text** on their own line. **DO NOT** use bolding (**), markdown headings (##), or colons (:).
-        3. The final section, which is a concise wrap-up, must be titled **Summary**. (Still use plain text for the word Summary).
+        **IMPORTANT FORMATTING INSTRUCTIONS for Angular Display:**
+        1. **DO NOT** include any title like "Business Advisory Analysis Report".
+        2. To ensure the section headers can be styled as bold on the front end, you must format them with a unique prefix: **"//"** (slash, slash) followed by **Title Case** tex and add surfix **"\\"** (backslash, backslash).
+        3. **DO NOT** use asterisks (**), colons (:), markdown headings (## or ###), or all-caps for headers.
+        4. The final section, which is a concise wrap-up, must be titled **// Summary**.
+        
+        Example Header Format:
+        //Executive Summary\\
+        
+        [Paragraph text starts here...]
         
         Make sure you provide the following sections:
         - Executive Summary (Total sales, growth, standout performers)
