@@ -432,14 +432,14 @@ async def analyze_upload(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to process upload: {str(e)}")
 
-@app.post("/analyze/excel/upload", response_model=AnalysisResponse)
+@app.post("/analyze/spreadsheet/upload", response_model=AnalysisResponse)
 async def analyze_excel_upload(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(..., description="Excel file to analyze"),
     analysis_type: str = "full"
 ):
-    if not file.filename.lower().endswith(('.xlsx', '.xls')):
-        raise HTTPException(status_code=400, detail="Only Excel files are supported")
+    if not file.filename.lower().endswith(('.xlsx', '.xls', '.csv')):
+        raise HTTPException(status_code=400, detail="Only Excel and CSV files are supported")
     
     if analysis_type not in ["metrics", "ratios", "full"]:
         raise HTTPException(status_code=400, detail="Invalid analysis_type")
@@ -548,7 +548,7 @@ async def get_analysis_results(request_id: str):
     
     return result
 
-@app.get("/status/excel/{request_id}")
+@app.get("/status/spreadsheet/{request_id}")
 async def get_excel_status(request_id: str):
     if request_id not in excel_analysis_queue:
         raise HTTPException(status_code=404, detail="Request ID not found")
@@ -563,7 +563,6 @@ async def get_excel_status(request_id: str):
             "request_id": request_id, 
             "status": "completed", 
             "result": result, 
-            # "result": 'I am a banana', #AAAAAAAAA
             "queue_info": queue_info
         }
     
@@ -573,7 +572,7 @@ async def get_excel_status(request_id: str):
         "queue_info": queue_info
     }
 
-@app.get("/results/excel/{request_id}")
+@app.get("/results/spreadsheet/{request_id}")
 async def get_excel_results(request_id: str):
     if request_id not in excel_analysis_results:
         raise HTTPException(status_code=404, detail="Analysis results not found")

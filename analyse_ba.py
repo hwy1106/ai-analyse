@@ -7,6 +7,7 @@ from langgraph.checkpoint.memory import MemorySaver
 from langchain_google_genai import ChatGoogleGenerativeAI
 from pypdf import PdfReader
 from collections import Counter
+from pathlib import Path
 import pandas as pd
 import numpy as np
 
@@ -27,15 +28,25 @@ class StatementState(TypedDict):
 
 # --- Step 1: Read and extract totals from xlsx ---
 def read_statement(state: StatementState) -> StatementState:
-    # Currently accepting xlsx only, check for pdf compatability
+    # Currently accepting csv, xlsx and xls files
     try:
-        df = pd.read_excel(state["file_path"])
-        df = df.replace({np.nan: None}) #Sanitize df
+        #Extract data type
+        data_type = Path(state["file_path"]).suffix
+        # print('Debugging read_statement:', data_type)
 
+        if data_type == ".xls" or data_type == ".xlsx":
+            df = pd.read_excel(state["file_path"], encoding="utf-8", encoding_errors="replace")
+            df = df.replace({np.nan: None}) #Sanitize df
+        
+        elif data_type == ".csv":
+            df = pd.read_csv(state["file_path"], encoding="utf-8", encoding_errors="replace")
+            df = df.replace({np.nan: None}) #Sanitize df
+
+        else:
+            raise ValueError("Incompatible file type")
+        
         #Insert warning if no extraction
-        # print(f"⚠️  Warning: Could not extract text from page: {e}")
-        #         continue
-        print(f"✅ Successfully extracted dataframe from Excel")
+        print(f"✅ Successfully extracted dataframe from {data_type} file")
 
         # Select rows that contain Sales
         filtered_rows = df[df['Item Name'].str.contains(r'sales', case=False, na=False)]
@@ -45,7 +56,7 @@ def read_statement(state: StatementState) -> StatementState:
         return state
         
     except Exception as e:
-        print(f"❌ Error reading PDF: {e}")
+        print(f"❌ Error reading files: {e}")
         state["text"] = ""
         state["metrics"] = {}
         return state
@@ -189,10 +200,12 @@ if __name__ == "__main__":
     print("=" * 50)
     
     # You can change this file path to analyze different PDFs
-    # pdf_file = "demo6_fs.pdf"
+    pdf_file = "data_pdf.pdf"
     # pdf_file = "SME_Business_Advisory_Template.pdf"
     # xlsx_file = "data.xlsx"
-    xlsx_file = "data.xls"
+    # xlsx_file = "data.xls"
+    # csv_file = "data_csv.csv"
+    xlsx_file = pdf_file
     
     if not os.path.exists(xlsx_file):
         print(f"❌ PDF file not found: {xlsx_file}")

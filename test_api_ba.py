@@ -41,7 +41,7 @@ def test_upload_analysis(xlsx_file_path: str):
         with open(xlsx_file_path, 'rb') as f:
             files = {'file': (os.path.basename(xlsx_file_path), f, 'application/xlsx')}
             response = requests.post(
-                f"{API_BASE_URL}/analyze/excel/upload",
+                f"{API_BASE_URL}/analyze/spreadsheet/upload",
                 files=files,
                 params={'analysis_type': 'full'}
             )
@@ -73,7 +73,7 @@ def test_file_analysis(xlsx_file_path: str):
         }
         
         response = requests.post(
-            f"{API_BASE_URL}/analyze/excel/upload",
+            f"{API_BASE_URL}/analyze/spreadsheet/upload",
             json=payload
         )
         
@@ -96,7 +96,7 @@ def wait_for_completion(request_id: str, max_wait_time: int = 300):
     start_time = time.time()
     while time.time() - start_time < max_wait_time:
         try:
-            response = requests.get(f"{API_BASE_URL}/status/excel/{request_id}")
+            response = requests.get(f"{API_BASE_URL}/status/spreadsheet/{request_id}")
             if response.status_code == 200:
                 data = response.json()
                 status = data['status']
@@ -127,7 +127,7 @@ def get_results(request_id: str):
     print(f"\n📊 Getting results for {request_id}...")
     
     try:
-        response = requests.get(f"{API_BASE_URL}/results/excel/{request_id}")
+        response = requests.get(f"{API_BASE_URL}/results/spreadsheet/{request_id}")
         if response.status_code == 200:
             data = response.json()
             print("✅ Results retrieved successfully!")
@@ -194,7 +194,8 @@ def main():
     test_queue_status()
     
     # Look for excel files in current directory
-    excel_files = [f for f in Path(".").iterdir() if f.suffix in [".xls", ".xlsx"]]
+    excel_files = [f for f in Path(".").iterdir() if f.suffix in [".csv"]]
+    # excel_files = "data_csv.csv"
     
     if not excel_files:
         print("\n⚠️  No excel files found in current directory")
