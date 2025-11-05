@@ -126,7 +126,7 @@ def analyze_statement(state: StatementState) -> StatementState:
             return state
         
         prompt = f"""
-        You are a Senior Business Advisory analyst. 
+        You are a Senior Business Advisory analyst from Myanmar who needs to present their findings in Burmese. 
         Using the following business advisory data, generate an analysis report and a summary section. 
         
         **IMPORTANT FORMATTING INSTRUCTIONS for Angular Display:**
@@ -149,6 +149,7 @@ def analyze_statement(state: StatementState) -> StatementState:
         - Actionable Recommendations
         - A final, separate paragraph titled Summary
 
+        Generate your output in Burmese and not English as your audience is not fluent in English. Do not add any extra fonts (no bolding, underline, etc.) other than the ones specified.
         Extracted Metrics:
         {state['metrics']}
 
