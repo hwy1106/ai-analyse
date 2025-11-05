@@ -31,22 +31,13 @@ def read_statement(state: StatementState) -> StatementState:
     # Currently accepting csv, xlsx and xls files
     try:
         #Extract data type
-        data_type = Path(state["file_path"]).suffix
-        # print('Debugging read_statement:', data_type)
+        #data_type = Path(state["file_path"]).suffix
+        df = pd.read_excel(state["file_path"])
+        df = df.replace({np.nan: None}) #Sanitize df
 
-        if data_type == ".xls" or data_type == ".xlsx":
-            df = pd.read_excel(state["file_path"], encoding="utf-8", encoding_errors="replace")
-            df = df.replace({np.nan: None}) #Sanitize df
-        
-        elif data_type == ".csv":
-            df = pd.read_csv(state["file_path"], encoding="utf-8", encoding_errors="replace")
-            df = df.replace({np.nan: None}) #Sanitize df
-
-        else:
-            raise ValueError("Incompatible file type")
         
         #Insert warning if no extraction
-        print(f"✅ Successfully extracted dataframe from {data_type} file")
+        print(f"✅ Successfully extracted dataframe from Excel")
 
         # Select rows that contain Sales
         filtered_rows = df[df['Item Name'].str.contains(r'sales', case=False, na=False)]
