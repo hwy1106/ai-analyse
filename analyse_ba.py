@@ -135,18 +135,18 @@ def analyze_statement(state: StatementState) -> StatementState:
             return state
         
         prompt = f"""
-        You are a Senior Business Advisory analyst from Myanmar who needs to present their findings in Burmese. 
+        You are a Senior Business Advisory analyst. 
         Using the following business advisory data, generate an analysis report and a summary section. 
         
         **IMPORTANT FORMATTING INSTRUCTIONS for Angular Display:**
         1. **DO NOT** include any title like "Business Advisory Analysis Report".
-        2. To ensure the section headers can be styled as bold on the front end, you must format them with a unique prefix: **"//"** (slash, slash) followed by **Title Case** tex and add surfix **"\\\\"** (backslash, backslash).
+        2. To ensure the section headers can be styled as bold on the front end, you must format them with a unique prefix: **"//"** (slash, slash) followed by **Title Case** tex and add surfix **"\\"** (backslash, backslash).
         3. **DO NOT** use asterisks (**), colons (:), markdown headings (## or ###), or all-caps for headers.
         4. The final section, which is a concise wrap-up, must be titled **// Summary**.
         5. **DO NOT** remove prefix 0 (zero) like Customer Id, Item Code. 
         
         Example Header Format:
-        //Executive Summary\\\\
+        //Executive Summary\\
         
         [Paragraph text starts here...]
         
@@ -157,8 +157,6 @@ def analyze_statement(state: StatementState) -> StatementState:
         - Product/Service Insight
         - Actionable Recommendations
         - A final, separate paragraph titled Summary
-
-        Generate your output in Burmese and not English as your audience is not fluent in English. Do not add any extra fonts (no bolding, underline, etc.) other than the ones specified.
 
         Extracted Metrics:
         {state['metrics']}
