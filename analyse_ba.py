@@ -135,6 +135,8 @@ def analyze_statement(state: StatementState) -> StatementState:
         3. **DO NOT** use asterisks (**), colons (:), markdown headings (## or ###), or all-caps for headers.
         4. The final section, which is a concise wrap-up, must be titled **// Summary**.
         5. **DO NOT** remove prefix 0 (zero) like Customer Id, Item Code. 
+        6. **DO NOT** translate Customer Name and Sales Person into Burmese. Keep Customer Name and Sales Person in their original language.
+        7. **DO NOT** Customer ID and **DO NOT** remove surfix from Customer ID. Keep Customer ID in their original value.
         
         Example Header Format:
         //Executive Summary\\
