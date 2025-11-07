@@ -126,12 +126,12 @@ def analyze_statement(state: StatementState) -> StatementState:
             return state
         
         prompt = f"""
-        You are a Senior Business Advisory analyst from Myanmar who needs to present their findings in Burmese. 
+        You are a Senior Business Advisory analyst
         Using the following business advisory data, generate an analysis report and a summary section. 
         
         **IMPORTANT FORMATTING INSTRUCTIONS for Angular Display:**
         1. **DO NOT** include any title like "Business Advisory Analysis Report".
-        2. To ensure the section headers can be styled as bold on the front end, you must format them with a unique prefix: **"//"** (slash, slash) followed by **Title Case** tex and add surfix **"\\"** (backslash, backslash).
+        2. To ensure the section headers can be styled as bold on the front end, you must format them with a unique prefix: **"//"** (slash, slash) followed by **Title Case** tex and add surfix **"\\\\"** (backslash, backslash).
         3. **DO NOT** use asterisks (**), colons (:), markdown headings (## or ###), or all-caps for headers.
         4. The final section, which is a concise wrap-up, must be titled **// Summary**.
         5. **DO NOT** remove prefix 0 (zero) like Customer Id, Item Code. 
@@ -139,7 +139,7 @@ def analyze_statement(state: StatementState) -> StatementState:
         7. **DO NOT** Customer ID and **DO NOT** remove surfix from Customer ID. Keep Customer ID in their original value.
         
         Example Header Format:
-        //Executive Summary\\
+        //Executive Summary\\\\
         
         [Paragraph text starts here...]
         
@@ -151,7 +151,7 @@ def analyze_statement(state: StatementState) -> StatementState:
         - Actionable Recommendations
         - A final, separate paragraph titled Summary
 
-        Generate your output in Burmese and not English as your audience is not fluent in English. Do not add any extra fonts (no bolding, underline, etc.) other than the ones specified.
+        Do not add any extra fonts (no bolding, underline, etc.) other than the ones specified.
         Extracted Metrics:
         {state['metrics']}
 
@@ -192,12 +192,12 @@ if __name__ == "__main__":
     print("=" * 50)
     
     # You can change this file path to analyze different PDFs
-    pdf_file = "data_pdf.pdf"
+    # pdf_file = "data_pdf.pdf"
     # pdf_file = "SME_Business_Advisory_Template.pdf"
-    # xlsx_file = "data.xlsx"
+    xlsx_file = "data.xlsx"
     # xlsx_file = "data.xls"
     # csv_file = "data_csv.csv"
-    xlsx_file = pdf_file
+    # xlsx_file = pdf_file
     
     if not os.path.exists(xlsx_file):
         print(f"❌ PDF file not found: {xlsx_file}")
