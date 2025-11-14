@@ -12,16 +12,23 @@ import json
 from pathlib import Path
 import pandas as pd  # For reading Excel files
 
+# Finance/PDF analysis
 from analyse import read_statement as read_pdf_statement
 from analyse import calculate_ratios as calculate_pdf_ratios
 from analyse import analyze_statement as analyze_pdf_statement
 from analyse import StatementState as PDFStatementState
 
-# Excel analysis
+# Sales/Excel analysis
 from analyse_ba import read_statement as read_excel_statement
 from analyse_ba import calculate_ratios as calculate_excel_ratios
 from analyse_ba import analyze_statement as analyze_excel_statement
 from analyse_ba import StatementState as ExcelStatementState
+
+# Combined/Business Advisory analysis
+from analyse_combined import (
+    CombinedState, 
+    run_financial_analysis, run_sales_analysis, combine_analyses
+)
 
 # New imports for PDF/chart generation
 from reportlab.lib.pagesizes import A4
@@ -90,6 +97,9 @@ analysis_queue: Dict[str, Dict[str, Any]] = {}
 excel_analysis_results: Dict[str, Any] = {}
 excel_analysis_queue: Dict[str, Any] = {}
 
+# Storage for Business Advisory analysis results
+ba_analysis_results: Dict[str, Any] = {}
+ba_analysis_queue: Dict[str, Any] = {}
 
 # Utility functions
 def save_uploaded_file(upload_file: UploadFile) -> str:
@@ -252,6 +262,90 @@ async def process_excel_analysis(request_id: str, file_path: str, analysis_type:
         }
         excel_analysis_queue[request_id]["status"] = "failed"
         excel_analysis_queue[request_id]["error"] = str(e)
+
+async def process_ba_analysis(request_id: str, file_path_finance: str, file_path_sales: str, analysis_type: str):
+    start_time = datetime.now()
+    try:
+        ba_analysis_queue[request_id]["status"] = "processing"
+
+        # Initialize finance and sales states
+        state_finance: PDFStatementState = {
+            "file_path": file_path_finance, "text": "", "metrics": {}, "ratios": {}, "analysis": ""
+        }
+        
+        state_sales: ExcelStatementState = {
+            "file_path": file_path_sales, "text": "", "metrics": {}, "ratios": {}, "analysis": ""
+        }
+
+        # Individual state analysis
+        if analysis_type in ["metrics", "full"]:
+            state_finance = read_pdf_statement(state_finance)
+            state_sales = read_excel_statement(state_sales)
+
+        if analysis_type in ["ratios", "full"] and state_finance["metrics"]:
+            state_finance = calculate_pdf_ratios(state_finance)
+
+        if analysis_type == "full" and state_finance["metrics"] and state_finance["ratios"]:
+            state_finance = analyze_pdf_statement(state_finance)
+
+        if analysis_type in ["ratios", "full"] and state_sales["metrics"]:
+            state_sales = calculate_excel_ratios(state_sales)
+
+        if analysis_type == "full" and state_sales["metrics"] and state_sales["ratios"]:
+            state_sales = analyze_excel_statement(state_sales)
+
+        # Initialize combined state
+        state_combined: CombinedState = {
+            "file_path_finance": file_path_finance,
+            "file_path_sales": file_path_sales,
+            "analysis_finance": state_finance["analysis"],
+            "analysis_sales": state_sales["analysis"],
+            "combined_analysis": "",
+            # "combined_ratios": {}
+        }
+
+        # Combine analyses
+        if state_combined["analysis_finance"] and state_combined["analysis_sales"]:
+            state_combined = combine_analyses(state_combined)
+
+            # combined_ratios = {
+            #     "finance_ratios": state_finance.get("ratios", {}),
+            #     "sales_ratios": state_sales.get("ratios", {})
+            # }
+
+        # Processing time
+        processing_time = (datetime.now() - start_time).total_seconds()
+
+        # Store result
+        ba_analysis_results[request_id] = {
+            "request_id": request_id,
+            "status": "completed",
+            # "metrics": state_sales["metrics"], # Placeholder using sales variables
+            # "ratios": state_sales["ratios"], # Placeholder using sales variables
+            "analysis": state_combined["combined_analysis"],
+            "analysis_finance": state_finance["analysis"],
+            "analysis_sales": state_sales["analysis"],
+            "text_length": len(state_sales["text"]) + len(state_finance["text"]),
+            "timestamp": datetime.now().isoformat(),
+            "processing_time": processing_time
+        }
+        ba_analysis_queue[request_id]["status"] = "completed"
+
+    except Exception as e:
+        processing_time = (datetime.now() - start_time).total_seconds()
+        ba_analysis_results[request_id] = {
+            "request_id": request_id,
+            "status": "failed",
+            "metrics": {},
+            "ratios": {},
+            "analysis": f"Analysis failed: {str(e)}",
+            "text_length": 0,
+            "timestamp": datetime.now().isoformat(),
+            "processing_time": processing_time
+        }
+        ba_analysis_queue[request_id]["status"] = "failed"
+        ba_analysis_queue[request_id]["error"] = str(e)
+
 
 def _generate_bar_chart_png(metrics: Dict[str, float], output_path: Path):
     revenue = metrics.get("Total Revenue", 0.0)
@@ -467,6 +561,54 @@ async def analyze_excel_upload(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to process Excel upload: {str(e)}")
 
+@app.post("/analyze/business-advisory/upload", response_model=AnalysisResponse)
+async def analyze_ba_upload(
+    background_tasks: BackgroundTasks,
+    finance_file: UploadFile = File(..., description="Excel file to analyze"),
+    sales_file: UploadFile = File(..., description="PDF file to analyze"),
+    analysis_type: str = "full"
+):
+    if not finance_file.filename.lower().endswith('.pdf'):
+        raise HTTPException(status_code=400, detail="Only PDF files are supported for Finance analysis")
+    
+    if not sales_file.filename.lower().endswith(('.xlsx', '.xls', '.csv')):
+        raise HTTPException(status_code=400, detail="Only Excel and CSV files are supported for Sales analysis")
+    
+    if analysis_type not in ["metrics", "ratios", "full"]:
+        raise HTTPException(status_code=400, detail="Invalid analysis_type")
+    
+    try:
+        request_id = str(uuid.uuid4())
+        file_path_sales = save_uploaded_excel(sales_file)
+        file_path_finance = save_uploaded_file(finance_file)
+
+        # ba_analysis_queue[request_id] = {
+        #     "status": "queued",
+        #     "file_path_sales": file_path_sales,
+        #     "file_path_finance": file_path_finance,
+        #     "analysis_type": analysis_type,
+        #     "timestamp": datetime.now().isoformat()
+        # }
+
+        ba_analysis_queue[request_id] = {
+            "status": "queued",
+            "file_path": file_path_sales,
+            "analysis_type": analysis_type,
+            "timestamp": datetime.now().isoformat()
+        }
+
+        background_tasks.add_task(process_ba_analysis, request_id, file_path_finance, file_path_sales, analysis_type)
+
+        return AnalysisResponse(
+            request_id=request_id,
+            status="queued",
+            message="Excel analysis started successfully",
+            timestamp=datetime.now().isoformat()
+        )
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to process Excel upload: {str(e)}")
+
 @app.post("/analyze/file", response_model=AnalysisResponse)
 async def analyze_existing_file(
     background_tasks: BackgroundTasks,
@@ -583,6 +725,41 @@ async def get_excel_results(request_id: str):
         raise HTTPException(status_code=500, detail=f"Analysis failed: {result['analysis']}")
     return result
 
+@app.get("/status/business-advisory/{request_id}")
+async def get_ba_status(request_id: str):
+    if request_id not in ba_analysis_queue:
+        raise HTTPException(status_code=404, detail="Request ID not found")
+    
+    queue_info = ba_analysis_queue[request_id]
+    # print('debugging queue_info:', queue_info)
+
+    if queue_info["status"] == "completed" and request_id in ba_analysis_results:
+        result = ba_analysis_results[request_id]
+        
+        return {
+            "request_id": request_id, 
+            "status": "completed", 
+            "result": result, 
+            "queue_info": queue_info
+        }
+    
+    return {
+        "request_id": request_id, 
+        "status": queue_info["status"], 
+        "queue_info": queue_info
+    }
+
+@app.get("/results/business-advisory/{request_id}")
+async def get_ba_results(request_id: str):
+    if request_id not in ba_analysis_results:
+        raise HTTPException(status_code=404, detail="Analysis results not found")
+    
+    result = ba_analysis_results[request_id]
+    
+    if result["status"] == "failed":
+        raise HTTPException(status_code=500, detail=f"Analysis failed: {result['analysis']}")
+    return result
+
 @app.get("/queue", response_model=Dict[str, Any])
 async def get_queue_status():
     """Get the current analysis queue status"""
@@ -625,54 +802,6 @@ async def cleanup_all():
     analysis_queue.clear()
     
     return {"message": "Cleaned up all analyses"}
-
-@app.post("/analyze/upload", response_model=AnalysisResponse)
-async def analyze_upload(
-    background_tasks: BackgroundTasks,
-    file: UploadFile = File(..., description="PDF file to analyze"),
-    analysis_type: str = "full"
-):
-    """Upload and analyze a PDF file"""
-    
-    # Validate file type
-    if not file.filename.lower().endswith('.pdf'):
-        raise HTTPException(status_code=400, detail="Only PDF files are supported")
-    
-    # Validate analysis type
-    if analysis_type not in ["metrics", "ratios", "full"]:
-        raise HTTPException(status_code=400, detail="Invalid analysis_type. Use 'metrics', 'ratios', or 'full'")
-    
-    # Check API key
-    if not os.getenv("GOOGLE_API_KEY") and analysis_type == "full":
-        raise HTTPException(status_code=500, detail="Google API key not configured")
-    
-    try:
-        # Generate request ID
-        request_id = str(uuid.uuid4())
-        
-        # Save uploaded file
-        file_path = save_uploaded_file(file)
-        
-        # Initialize queue entry
-        analysis_queue[request_id] = {
-            "status": "queued",
-            "file_path": file_path,
-            "analysis_type": analysis_type,
-            "timestamp": datetime.now().isoformat()
-        }
-        
-        # Start background processing
-        background_tasks.add_task(process_analysis, request_id, file_path, analysis_type)
-        
-        return AnalysisResponse(
-            request_id=request_id,
-            status="queued",
-            message="Analysis started successfully",
-            timestamp=datetime.now().isoformat()
-        )
-        
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to process upload: {str(e)}")
 
 # Error handlers
 @app.exception_handler(Exception)

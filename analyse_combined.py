@@ -33,6 +33,8 @@ class CombinedState(TypedDict):
     analysis_finance: str
     analysis_sales: str
     combined_analysis: str
+    # combined_ratios: dict
+    # combined_metrics: dict
 
 # --- Step 1: Create subgraph for financial analysis ---
 def run_financial_analysis(state: CombinedState) -> CombinedState:
@@ -55,6 +57,7 @@ def run_sales_analysis(state: CombinedState) -> CombinedState:
     try:
         result = sales_graph.invoke({"file_path": state["file_path_sales"]})
         state["analysis_sales"] = result.get("analysis", "")
+        # state["combined_ratios"]["ratio_finance"] = result.get("ratios")
         print(f"✅ Sales analysis completed")
 
     except Exception as e:
@@ -71,6 +74,7 @@ def combine_analyses(state: CombinedState) -> CombinedState:
     if not api_key:
         print("❌ Cannot analyze: GOOGLE_API_KEY not found")
         state["combined_analysis"] = "Analysis failed: API key not available"
+        # state["combined_ratios"]["ratio_finance"] = result.get("ratios")
         return state
     
     try:
@@ -105,6 +109,9 @@ def combine_analyses(state: CombinedState) -> CombinedState:
         print(f"❌ Error when combining analysis data: {e}")
         state["combined_analysis"] = f"Analysis failed: {str(e)}"
         return state
+
+# Step 3.1: Combine ratios and metrics
+# def combine_ratios(state: CombinedState) -> CombinedState:
 
 # --- Build LangGraph (Using analyse and analyse_ba as submodules) ---
 memory = MemorySaver()
