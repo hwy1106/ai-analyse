@@ -10,6 +10,7 @@ from collections import Counter
 from pathlib import Path
 import pandas as pd
 import numpy as np
+import json, datetime
 
 load_dotenv()
 
@@ -35,6 +36,12 @@ def read_statement(state: StatementState) -> StatementState:
         df = pd.read_excel(state["file_path"])
         df = df.replace({np.nan: None}) #Sanitize df
 
+        # Convert datetime64 columns to strings
+        # df = df.applymap(
+        #     lambda x: x.strftime("%Y-%m-%d")
+        #     if isinstance(x, (datetime.datetime, datetime.date))
+        #     else x
+        # )
         
         #Insert warning if no extraction
         print(f"✅ Successfully extracted dataframe from Excel")
@@ -83,7 +90,21 @@ def calculate_ratios(state: StatementState) -> StatementState:
             #     .reset_index()
             # )
             
-            ratios["Channel Data"] = dict(zip(m["Channel"].values(), m["Total Sale Value"].values()))
+            channels = m["Channel"]
+            values = m["Total Sale Value"]
+            channel_data = {}
+
+            for i in channels.keys():
+                ch = channels[i]
+                val = values[i]
+
+                if ch not in channel_data:
+                    channel_data[ch] = []
+
+                channel_data[ch].append(val)
+
+            ratios["Channel Data"] = channel_data
+
             print(f"✅ Calculated Channel Data: {ratios['Channel Data']}")
         except:
             print("⚠️  Cannot generate Channel data")
@@ -91,7 +112,14 @@ def calculate_ratios(state: StatementState) -> StatementState:
     # Collect salesperson + revenue  
     if "Salesperson" in m and "Total Sale Value" in m:
         try:
-            ratios["Salesperson Data"] = dict(zip(m["Salesperson"].values(), m["Total Sale Value"].values()))
+            sales_map = {}
+            salesperson_list = list(m["Salesperson"].values())
+            sales_list = list(m["Total Sale Value"].values())
+
+            for person, value in zip(salesperson_list, sales_list):
+                sales_map.setdefault(person, []).append(value)
+
+            ratios["Salesperson Data"] = sales_map
             print(f"✅ Calculated Salesperson Data: {ratios['Salesperson Data']}")
         except:
             print("⚠️  Cannot generate Salesperson data")      
@@ -214,14 +242,12 @@ if __name__ == "__main__":
         print("📊 ANALYSIS RESULTS")
         print("=" * 50)
 
-        print('Test metrics', state["metrics"])
         if state["metrics"]:
             print("\n💰 Extracted Financial Metrics:")
             print(state["metrics"])
         else:
             print("\n⚠️  No financial metrics were extracted")
         
-        print('Test ratios')
         if state["ratios"]:
             print("\n📈 Calculated Financial Ratios:")
             for key, value in state["ratios"].items():
